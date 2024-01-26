@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "express": "^4.18.2",
+    "http": "^0.0.1-security",
+    "http-proxy-middleware": "^2.0.6",
+    "onoff": "^6.0.3",
+    "path": "^0.12.7",
+    "pigpio": "^3.3.1",
+    "socket.io": "^4.7.2",
+    "socket.io-client": "^4.7.2"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "name": "led-controls",
+  "version": "1.0.0",
+  "main": "robot-client.js",
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

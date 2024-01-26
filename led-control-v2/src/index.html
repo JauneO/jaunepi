@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <title>Control Panel</title>
+    <style>
+        .Led {
+            width: 50px;
+            height: 50px;
+            border: 1px solid transparent;
+            border-radius: 50%;
+            margin: 5px;
+            background-color: rgb(146, 56, 56);
+        }
+
+        .LedOn {
+            background-color: rgb(47, 130, 63);
+        }
+
+        .LedOnGreen {
+            background-color: rgb(47, 130, 63);
+        }
+
+        .Container {
+            display: flex;
+        }
+
+        .Button {
+            width: 100px;
+            margin: 5px;
+            background-color: #7fc1c1;
+            border: none;
+            box-shadow: 9px 9px 0 0 #544a4ad1;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .Button:active {
+            background-color: #678b8b;
+            transform: translate(5px, 5px);
+            box-shadow: 4px 4px 0 0 #544a4ad1;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #d1e0e0;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "socket.io-client": "https://cdn.socket.io/4.7.2/socket.io.esm.min.js"
+            }
+        }
+    </script>    
+    <script src="./static/script.js" type="module"></script>
+</head>
+<body>
+    <div id="root">
+        <!-- Motion Control Panel -->
+        <div id="jaune" class="Container">
+            <div class="Led"></div>
+            <button class="Button" id="jaune-button">
+                Jaune
+            </button>
+        </div>
+        <div id="green" class="Container">
+            <div class="Led"></div>
+            <button class="Button" id="green-button">
+                Green
+            </button>
+        </div>
+        <div id="blue" class="Container">
+            <div class="Led"></div>
+            <button class="Button" id="blue-button">
+                Red
+            </button>
+        </div>
+        <div id="servomotor" class="Container">
+            <div class="Led ServoOff"></div>
+            <button class="Button" id="servo-button">
+                Control Servomotor
+            </button>
+        </div>
+        <!-- Motion Control Panel -->
+        <div>
+            <div>
+                <!-- Display Motion Stream -->
+                <iframe id="streamFrame" width="320" height="240" src="http://192.168.0.193:8089"></iframe>
+            </div>
+            <div>
+                <!-- Buttons for Motion Control -->
+                <div>
+                    <button onclick="takeSnapshot()">Take Snapshot</button>
+                    <button onclick="restartMotion()">Restart Motion</button>
+                </div>
+                <div>    
+                    <button onclick="startDetection()">Start Detection</button>
+                    <button onclick="pauseDetection()">Pause Detection</button>
+                </div>
+                
+            </div>
+            <div>
+                <!-- Status Indicator -->
+                <p id="statusIndicator">Detection Status: Unknown</p>
+                <p id="motionEventIndicator">Motion Event: No</p>
+            </div>
+        </div>
+        <!-- LED Control Panel -->
+        <div id="led-control" class="Container">
+            <button class="Button" id="on-button" onclick="turnOnLights()">Turn On</button>
+            <button class="Button" id="off-button" onclick="turnOffLights()">Turn Off</button>
+        </div>
+    </div>
+    <script>
+        // Function to take a snapshot
+        function takeSnapshot() {
+            console.log('Fetching snapshot...');
+            fetch('proxy/action/snapshot')
+                .then(response => {
+                    console.log('Snapshot response:', response);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                    return response.text();
+                })
+                .then(data => console.log('Snapshot data:', data))
+                .catch(error => console.error('Error fetching snapshot:', error));
+        }
+
+        // Function to start detection
+        function startDetection() {
+            console.log('Starting detection...');
+            fetch('proxy/detection/start')
+                .then(response => {
+                    console.log('Start detection response:', response);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                })
+                .catch(error => console.error('Error starting detection:', error));
+            }
+
+        // Function to pause detection
+        function pauseDetection() {
+            console.log('Pausing detection...');
+            fetch('proxy/detection/pause', { // this is the proxy adress :http://localhost:8088/proxy/0/detection/pause
+                method: 'GET',
+                credentials: 'include', // include cookies in the request if any
+            })
+                .then(response => {
+                    console.log('Pause detection response:', response);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                })
+                .catch(error => console.error('Error pausing detection:', error));
+        }
+
+        // Function to restart motion
+        function restartMotion() {
+            console.log('Restarting motion...');
+            fetch('proxy/action/restart')
+                .then(response => {
+                    console.log('Restart motion response:', response);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                    return response.text();
+                })
+                .catch(error => console.error('Error restarting motion:', error));
+        }
+
+        // Function to get detection status
+        function getDetectionStatus() {
+            console.log('Fetching detection status...');
+            fetch('/proxy/detection/status')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                    return response.text();
+                })
+                .then(data => {
+                    console.log(data);
+                    document.getElementById('statusIndicator').innerText = 'Detection Status: ' + data.trim();
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Set up periodic update every 5 seconds (adjust as needed)
+        setInterval(getDetectionStatus, 5000);
+
+        // Function to turn on lights
+        function turnOnLights() {
+            console.log('Turning on lights...');
+            fetch('http://192.168.0.193:5000/on')
+                .then(response => {
+                    console.log('Lights on response:', response);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                })
+                .catch(error => console.error('Error turning on lights:', error));
+        }
+
+        // Function to turn off lights
+        function turnOffLights() {
+            console.log('Turning off lights...');
+            fetch('http://192.168.0.193:5000/off')
+                .then(response => {
+                    console.log('Lights off response:', response);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch');
+                    }
+                })
+                .catch(error => console.error('Error turning off lights:', error));
+        }
+
+
+        // Function to update the status on the HTML page
+        function updateStatus(motionDetected) {
+            // Get the status element
+            var statusElement = document.getElementById('motionEventIndicator');
+
+            // Check if the status element exists
+            if (statusElement) {
+                // Update the text content based on motion detection status
+                if (motionDetected) {
+                    statusElement.innerText = 'Motion Detected!';
+                    // Reset the motionDetected flag after 2 seconds of inactivity
+                    setTimeout(function() {
+                        motionDetected = false;
+                        updateStatus(); // Update the status to 'On Standby'
+                    }, 2000);
+                } else {
+                    statusElement.innerText = 'On Standby';
+                }
+            } else {
+                console.error('Status element not found.');
+            }
+        }
+
+        // Function to update motion event indicator
+        function updateMotionEventIndicator(status) {
+            document.getElementById('motionEventIndicator').innerText = 'Motion Event: ' + status;
+        }
+    </script>
+</body>
+</html>
