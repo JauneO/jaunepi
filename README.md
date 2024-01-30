@@ -1,6 +1,3 @@
-Certainly! Here's the complete Markdown content for your README:
-
-```markdown
 # Raspberry Pi System Configuration and Packages Setup
 
 ## System Configuration
