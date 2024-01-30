@@ -1,3 +1,4 @@
+ <!-- /src/public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -106,14 +107,17 @@
             <div>
                 <!-- Buttons for Motion Control -->
                 <div>
-                    <button onclick="takeSnapshot()">Take Snapshot</button>
-                    <button onclick="restartMotion()">Restart Motion</button>
+                    <button id="snapshot-button">Take Snapshot</button>
+                    <button id="restart-button">Restart Motion</button>
                 </div>
                 <div>    
-                    <button onclick="startDetection()">Start Detection</button>
-                    <button onclick="pauseDetection()">Pause Detection</button>
+                    <button id="detection-on-button">Start Detection</button>
+                    <button id="detection-off-button">Pause Detection</button>
                 </div>
-                
+                <!-- Infrared Filter Control -->
+                <div>
+                    <button id="filtreIR-button">Filtre InfraRouge</button>              </button>
+                </div>                
             </div>
             <div>
                 <!-- Status Indicator -->
@@ -122,144 +126,12 @@
             </div>
         </div>
         <!-- LED Control Panel -->
-        <div id="led-control" class="Container">
-            <button class="Button" id="on-button" onclick="turnOnLights()">Turn On</button>
-            <button class="Button" id="off-button" onclick="turnOffLights()">Turn Off</button>
+        <div>
+            <button id="strip-on-button">Turn On</button>
+            <button id="strip-off-button">Turn Off</button>
         </div>
     </div>
     <script>
-        // Function to take a snapshot
-        function takeSnapshot() {
-            console.log('Fetching snapshot...');
-            fetch('proxy/action/snapshot')
-                .then(response => {
-                    console.log('Snapshot response:', response);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch');
-                    }
-                    return response.text();
-                })
-                .then(data => console.log('Snapshot data:', data))
-                .catch(error => console.error('Error fetching snapshot:', error));
-        }
-
-        // Function to start detection
-        function startDetection() {
-            console.log('Starting detection...');
-            fetch('proxy/detection/start')
-                .then(response => {
-                    console.log('Start detection response:', response);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch');
-                    }
-                })
-                .catch(error => console.error('Error starting detection:', error));
-            }
-
-        // Function to pause detection
-        function pauseDetection() {
-            console.log('Pausing detection...');
-            fetch('proxy/detection/pause', { // this is the proxy adress :http://localhost:8088/proxy/0/detection/pause
-                method: 'GET',
-                credentials: 'include', // include cookies in the request if any
-            })
-                .then(response => {
-                    console.log('Pause detection response:', response);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch');
-                    }
-                })
-                .catch(error => console.error('Error pausing detection:', error));
-        }
-
-        // Function to restart motion
-        function restartMotion() {
-            console.log('Restarting motion...');
-            fetch('proxy/action/restart')
-                .then(response => {
-                    console.log('Restart motion response:', response);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch');
-                    }
-                    return response.text();
-                })
-                .catch(error => console.error('Error restarting motion:', error));
-        }
-
-        // Function to get detection status
-        function getDetectionStatus() {
-            console.log('Fetching detection status...');
-            fetch('/proxy/detection/status')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch');
-                    }
-                    return response.text();
-                })
-                .then(data => {
-                    console.log(data);
-                    document.getElementById('statusIndicator').innerText = 'Detection Status: ' + data.trim();
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        // Set up periodic update every 5 seconds (adjust as needed)
-        setInterval(getDetectionStatus, 5000);
-
-        // Function to turn on lights
-        function turnOnLights() {
-            console.log('Turning on lights...');
-            fetch('http://192.168.0.193:5000/on')
-                .then(response => {
-                    console.log('Lights on response:', response);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch');
-                    }
-                })
-                .catch(error => console.error('Error turning on lights:', error));
-        }
-
-        // Function to turn off lights
-        function turnOffLights() {
-            console.log('Turning off lights...');
-            fetch('http://192.168.0.193:5000/off')
-                .then(response => {
-                    console.log('Lights off response:', response);
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch');
-                    }
-                })
-                .catch(error => console.error('Error turning off lights:', error));
-        }
-
-
-        // Function to update the status on the HTML page
-        function updateStatus(motionDetected) {
-            // Get the status element
-            var statusElement = document.getElementById('motionEventIndicator');
-
-            // Check if the status element exists
-            if (statusElement) {
-                // Update the text content based on motion detection status
-                if (motionDetected) {
-                    statusElement.innerText = 'Motion Detected!';
-                    // Reset the motionDetected flag after 2 seconds of inactivity
-                    setTimeout(function() {
-                        motionDetected = false;
-                        updateStatus(); // Update the status to 'On Standby'
-                    }, 2000);
-                } else {
-                    statusElement.innerText = 'On Standby';
-                }
-            } else {
-                console.error('Status element not found.');
-            }
-        }
-
-        // Function to update motion event indicator
-        function updateMotionEventIndicator(status) {
-            document.getElementById('motionEventIndicator').innerText = 'Motion Event: ' + status;
-        }
     </script>
 </body>
 </html>

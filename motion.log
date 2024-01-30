@@ -1,0 +1,2 @@
+[0:motion] [NTC] [ALL] conf_load: Processing thread 0 - config file /etc/motion/motion.conf
+[0:motion] [NTC] [ALL] motion_startup: Logging to file (/var/log/motion/motion.log)

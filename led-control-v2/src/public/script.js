@@ -1,81 +1,123 @@
 import { io } from "https://cdn.socket.io/4.7.2/socket.io.esm.min.js";
 
-//our socket
-//use your server IP!
 const socket = io('http://192.168.0.193:8080', { path: '/api/socket/' });
 
-//let's find our buttons
-const jauneLedButton = document.getElementById('jaune-button');
-const blueLedButton = document.getElementById('blue-button');
-const greenLedButton = document.getElementById('green-button');
-const servoButton = document.getElementById('servo-button'); // new//
+const buttons = {
+    jaune: document.getElementById('jaune-button'),
+    blue: document.getElementById('blue-button'),
+    green: document.getElementById('green-button'),
+    servo: document.getElementById('servo-button'),
+    irFilter: document.getElementById('filtreIR-button'),
+    snapshot: document.getElementById('snapshot-button'),
+    restart: document.getElementById('restart-button'),
+    detectionOn: document.getElementById('detection-on-button'),
+    detectionOff: document.getElementById('detection-off-button'),
+    stripOn: document.getElementById('strip-on-button'),
+    stripOff: document.getElementById('strip-off-button'),
+};
 
-
-
-//let's find our leds
-const jauneLed = document.getElementById('jaune').getElementsByClassName ('Led')[0];
-const greenLed = document.getElementById('green').getElementsByClassName('Led')[0];
-const blueLed = document.getElementById('blue').getElementsByClassName('Led')[0];
-
-const servomotorContainer = document.getElementById('servomotor');
-const servomotor = servomotorContainer.getElementsByClassName('Led')[0];
-
+const leds = {
+    jaune: document.getElementById('jaune').getElementsByClassName('Led')[0],
+    green: document.getElementById('green').getElementsByClassName('Led')[0],
+    blue: document.getElementById('blue').getElementsByClassName('Led')[0],
+    servomotor: document.getElementById('servomotor').getElementsByClassName('Led')[0],
+};
 
 const handleLedChange = (led) => {
     socket.emit('message-from-client', { to: 'ROBOT', type: 'change-led', led });
 };
 
-jauneLedButton.onclick = () => handleLedChange('jaune');
-blueLedButton.onclick = () => handleLedChange('blue');
-greenLedButton.onclick = () => handleLedChange('green');
-
 let servomotorActive = false;
-servoButton.onclick = () => {
+
+const handleServoButtonClick = () => {
     if (!servomotorActive) {
-       servomotorActive= true;
-       
-    
-    // Envoyer un message au serveur pour indiquer le besoin de régler le servomoteur à 90 degrés
+        servomotorActive = true;
         socket.emit('message-from-client', { to: 'ROBOT', type: 'rotate-servomotor' });
-        //servomotor.classList.remove('LedOn');
-        servomotor.classList.add('LedOnGreen');
+        leds.servomotor.classList.add('LedOnGreen');
         setTimeout(() => {
-            
             servomotorActive = false;
-            servomotor.classList.remove('LedOnGreen');
-            //servomotor.classList.add('LedOff');
-        }, 2000); // 2000 ms ici, ajustez-le en fonction de vos besoins
+            leds.servomotor.classList.remove('LedOnGreen');
+        }, 2000);
     }
 };
 
 
+function updateStatus(motionDetected) {
+    const statusElement = document.getElementById('motionEventIndicator');
+
+    if (statusElement) {
+        statusElement.innerText = motionDetected ? 'Motion Detected!' : 'On Standby';
+
+        if (motionDetected) {
+            
+            setTimeout(() => {
+                updateStatus(false); // Update the status to 'On Standby' after 2000 milliseconds
+            }, 2000);
+        }
+    } else {
+        console.error('Status element not found.');
+    }
+}
+
+
+function updateServiceStatus(data) {
+    const statusElement = document.getElementById('statusIndicator');
+    
+    if (statusElement) {
+        if (data && data.detectionStatus) {
+            statusElement.innerText = 'Detection Status: ' + data.detectionStatus;
+        } else {
+            statusElement.innerText = 'Detection Status: N/A';
+        }
+    } else {
+        console.error('Status indicator element not found.');
+    }
+}
+
+
+const handleGenericButtonClick = (actionType) => {
+    socket.emit('message-from-client', { to: 'ROBOT', type: actionType });
+};
+
+
+// Event listeners
+buttons.jaune.onclick = () => handleLedChange('jaune');
+buttons.blue.onclick = () => handleLedChange('blue');
+buttons.green.onclick = () => handleLedChange('green');
+buttons.servo.onclick = handleServoButtonClick;
+buttons.irFilter.onclick = () => handleGenericButtonClick('toggle-ir-filter');
+buttons.snapshot.onclick = () => handleGenericButtonClick('take-snapshot');
+buttons.restart.onclick = () => handleGenericButtonClick('restart-motion');
+buttons.detectionOn.onclick = () => handleGenericButtonClick('start-detection');
+buttons.detectionOff.onclick = () => handleGenericButtonClick('pause-detection');
+buttons.stripOn.onclick = () => handleGenericButtonClick('strip-on');
+buttons.stripOff.onclick = () => handleGenericButtonClick('strip-off');
+
+
+
+// Update UI based on server messages
 socket.on('message-from-robot', ({ ledStatusMap }) => {
-    ledStatusMap.jaune ? jauneLed.classList.add('LedOn') : jauneLed.classList.remove('LedOn');
-    ledStatusMap.green ? greenLed.classList.add('LedOn') : greenLed.classList.remove('LedOn');
-    ledStatusMap.blue ? blueLed.classList.add('LedOn') : blueLed.classList.remove('LedOn');
-    //ledStatusMap.servo ? servomotor.classList.add('LedOn') : servomotor.classList.remove('LedOn')
-    //ledStatusMap.servo ? servomotor.classList.add('ServoOn') : servomotor.classList.remove('ServoOn');
+    if (ledStatusMap) {
+        Object.entries(ledStatusMap).forEach(([led, status]) => {
+            if (leds[led]) {
+                leds[led].classList.toggle('LedOn', status);
+            }
+        });
+    }
 });
 
-// Variable to store motion detection status
-let motionDetected = false;
 
-// Initial call to start checking for motion
-updateStatus(motionDetected);
+socket.on('motion-detected', () => {
+    console.log('Motion detected event received from server');
+    updateStatus(true);
+});
 
-// Listen for the 'motion-detected' event from the server
-socket.on('motion-detected', (message) => {
-    console.log('Motion detected event received from server:', message.message);
 
-    // Update motion detection status
-    motionDetected = true;
-
-    // Update the status on the HTML page
-    updateStatus(motionDetected);
+socket.on('message-from-robot', (detectionStatus) => {
+    console.log('Received update-detection-status from server:', detectionStatus);
+    updateServiceStatus(detectionStatus);
 });
 
 socket.on('connect', () => {
     socket.emit('init-user', { id: 'USER' });
-})
-
-
+});

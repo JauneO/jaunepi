@@ -1,0 +1,145 @@
+ <!-- /src/public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
+    />
+    <title>Control Panel</title>
+    <style>
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #d1e0e0;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #root {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .Container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            
+        }
+        
+        .Led {
+            width: 20px;
+            height: 20px;
+            border: 1px solid transparent;
+            border-radius: 50%;
+            margin: 5px;
+            background-color: rgb(146, 56, 56);
+        }
+        
+        .LedOn {
+            background-color: rgb(47, 130, 63);
+        }
+        
+        .LedOnGreen {
+            background-color: rgb(47, 130, 63);
+        }
+        
+        .Button {
+            width: 120px;
+            margin: 5px;
+        }
+        
+        /* Add media query for small screens */
+        @media (max-width: 600px) {
+            .Container {
+                flex-direction: row;
+                align-items: center;
+            }
+        
+            .Button {
+                margin: 5px;
+            }
+        }
+        
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "socket.io-client": "https://cdn.socket.io/4.7.2/socket.io.esm.min.js"
+            }
+        }
+    </script>    
+    <script src="./static/script.js" type="module"></script>
+</head>
+<body>
+    <div id="root">
+        <!-- Motion Control Panel -->
+        <div id="jaune" class="Container">
+            <div class="Led"></div>
+            <button class="Button" id="jaune-button">
+                Jaune
+            </button>
+        </div>
+        <div id="green" class="Container">
+            <div class="Led"></div>
+            <button class="Button" id="green-button">
+                Green
+            </button>
+        </div>
+        <div id="blue" class="Container">
+            <div class="Led"></div>
+            <button class="Button" id="blue-button">
+                Red
+            </button>
+        </div>
+        <div id="servomotor" class="Container">
+            <div class="Led ServoOff"></div>
+            <button class="Button" id="servo-button">
+                Control Servomotor
+            </button>
+        </div>
+        <!-- Motion Control Panel -->
+        <div>
+            <div>
+                <!-- Display Motion Stream -->
+                <iframe id="streamFrame" width="320" height="240" src="http://jaunepi.local:8089"></iframe>
+            </div>
+            <div>
+                <!-- Buttons for Motion Control -->
+                <div>
+                    <button class="Button" id="snapshot-button">Take Snapshot</button>
+                    <button class="Button" id="make-movie-button">Make Movie</button>
+                    <button class="Button" id="filtreIR-button">Filtre InfraRouge</button>
+                </div>
+                <!-- Infrared Filter Control -->
+                <div>
+                    <button class="Button" id="toggle-detection-button">Detection On/Off</button>
+                    <button class="Button" id="restart-button">Restart Motion</button>
+                </div>                
+            </div>
+            <div>
+                <!-- Status Indicator -->
+                <p id="statusIndicator">Detection Status Unknown</p>
+                <p id="motionEventIndicator">Motion Event: No</p>
+            </div>
+        </div>
+        <!-- LED Control Panel -->
+        <div>
+            <button class="Button" id="strip-switch-button">Turn On/Off</button>
+            <button class="Button" id="night-light-button">Night Light</button>
+        </div>
+    </div>
+    <script>
+    </script>
+</body>
+</html>
