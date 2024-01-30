@@ -1,6 +1,5 @@
 ### SYSTEM CONFIGURATION ### 
 
-# sudo rpi-update ***
 sudo raspi-config
 	-enable VNC
 sudo apt-mark hold realvnc-vnc-server
@@ -23,8 +22,6 @@ sudo nano /etc/motion/motion.conf
 
 ### PACKAGES ###	
 npm i
-#npm install http-proxy-middleware
-#	- this is for the CORS issue
 npm install onoff
 npm install i2c-bus
 
