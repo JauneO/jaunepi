@@ -7,6 +7,7 @@
    sudo raspi-config
    ```
    - Enable VNC
+   - Enable I2C
 
 2. Hold realvnc-vnc-server package version:
    ```bash
@@ -50,9 +51,10 @@
   npm install i2c-bus
   ```
 
-- Install Python dependencies:
+- Install Python dependencies within virtual environment:
   ```bash
-  pip install Flask
+  pip install flask
+  pip install flask-cors
   pip install rpi_ws281x
   ```
 
@@ -66,8 +68,8 @@
 
 ## Documentation 
 
-   - RPi IR-CUT Camera : https://www.uctronics.com/download/Amazon/B003503.pdf
-   - RPi IR-CUT Camera DataSheet : https://www.waveshare.com/wiki/RPi_IR-CUT_Camera
+   - RPi IR-CUT Camera DataSheet : https://www.uctronics.com/download/Amazon/B003503.pdf
+   - RPi IR-CUT Camera Tutorial : https://www.waveshare.com/wiki/RPi_IR-CUT_Camera
    - Fix : https://forums.raspberrypi.com/viewtopic.php?t=358211
    - Motion : https://motion-project.github.io/index.html
    - Motion API : https://www.lavrsen.dk/foswiki/bin/view/Motion/MotionHttpAPI
