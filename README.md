@@ -62,3 +62,13 @@
   ```bash
   ./start_servers.sh
   ```
+
+
+## Documentation 
+
+https://www.uctronics.com/download/Amazon/B003503.pdf
+https://www.waveshare.com/wiki/RPi_IR-CUT_Camera
+https://forums.raspberrypi.com/viewtopic.php?t=358211
+https://motion-project.github.io/index.html
+https://www.lavrsen.dk/foswiki/bin/view/Motion/MotionHttpAPI
+https://github.com/rpi-ws281x/rpi-ws281x-python
