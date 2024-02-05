@@ -1,74 +1,96 @@
- <!-- /src/public/index.html -->
+<!-- scr/index.html -->
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="utf-8" />
     <meta name="theme-color" content="#000000" />
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"
-    />
-    <title>Control Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
+    <title>Panneau de Contrôle</title>
     <style>
         html, body {
             width: 100%;
             height: 100%;
             margin: 0;
             padding: 0;
-            background-color: #d1e0e0;
+            background-color: #202020;
+            color: #fff;
+            font-family: 'Arial', sans-serif;
         }
-        
-        body {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        
+
         #root {
             text-align: center;
             padding: 20px;
         }
-        
+
+        #streamFrame {
+            width: 320px;
+            height: 240px;
+            margin-top: 20px;
+        }
+
+        h1 {
+            margin: 0; /* Remove default margin for h1 */
+        }
+
         .Container {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: center;
-            
+            justify-content: center; /* Center items horizontally */
         }
-        
-        .Led {
-            width: 20px;
-            height: 20px;
-            border: 1px solid transparent;
-            border-radius: 50%;
-            margin: 5px;
-            background-color: rgb(146, 56, 56);
-        }
-        
-        .LedOn {
-            background-color: rgb(47, 130, 63);
-        }
-        
-        .LedOnGreen {
-            background-color: rgb(47, 130, 63);
-        }
-        
+
         .Button {
-            width: 120px;
+            display: inline-block; /* Add this line to make buttons inline */
+            width: 150px; /* Adjust the width as needed */
+            height: 40px;
             margin: 5px;
+            background-color: #ddd;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 10px;
+            cursor: pointer;
+            outline: none;
+            border-radius: 5px;
+            transition: background-color 0.3s, box-shadow 0.3s;
+        }
+        .Button:hover {
+            background-color: #ddd; /* Lighten the background on hover */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add a subtle box-shadow on hover for emboss effect */
         }
         
-        /* Add media query for small screens */
-        @media (max-width: 600px) {
-            .Container {
-                flex-direction: row;
-                align-items: center;
-            }
+        .Button:active {
+            background-color: rgb(47, 130, 63);
+            color: #fff;
+        }
         
-            .Button {
-                margin: 5px;
-            }
+        .Button.On {
+            background-color: #47a846;
+            color: #fff;
+        }
+        
+        /* Add a transition for color change on the 'On' state */
+        .Button.On:hover {
+            background-color: #5cb85c;
+        }
+
+        .red-button.Button:hover {
+            background-color: #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .red-button.Button:active {
+            background-color: rgb(167, 57, 57);
+            color: #fff;
+        }
+
+        .red-button.Button.On {
+            background-color: rgb(146, 56, 56); /* Adjusted to a red color similar to LEDs */
+            color: #fff;
+        }
+
+        .red-button.Button.On:hover {
+            background-color: rgb(167, 57, 57);/* Adjusted hover color for the On state */
         }
         
     </style>
@@ -83,63 +105,61 @@
 </head>
 <body>
     <div id="root">
-        <!-- Motion Control Panel -->
-        <div id="jaune" class="Container">
-            <div class="Led"></div>
-            <button class="Button" id="jaune-button">
-                Jaune
-            </button>
-        </div>
-        <div id="green" class="Container">
-            <div class="Led"></div>
-            <button class="Button" id="green-button">
-                Green
-            </button>
-        </div>
-        <div id="blue" class="Container">
-            <div class="Led"></div>
-            <button class="Button" id="blue-button">
-                Red
-            </button>
-        </div>
-        <div id="servomotor" class="Container">
-            <div class="Led ServoOff"></div>
-            <button class="Button" id="servo-button">
-                Control Servomotor
-            </button>
-        </div>
-        <!-- Motion Control Panel -->
+        <header>
+            <h1>Maison Intelligente</h1>  
+        </header>
+        <h2>Contrôle Lumières</h2>
         <div>
             <div>
-                <!-- Display Motion Stream -->
-                <iframe id="streamFrame" width="320" height="240" src="http://jaunepi.local:8089"></iframe>
+                <button class="Button" id="toggle-yellow-button" data-action-name="Cuisine (Jaune)">Cuisine (Jaune)</button>
             </div>
             <div>
-                <!-- Buttons for Motion Control -->
-                <div>
-                    <button class="Button" id="snapshot-button">Take Snapshot</button>
-                    <button class="Button" id="make-movie-button">Make Movie</button>
-                    <button class="Button" id="filtreIR-button">Filtre InfraRouge</button>
-                </div>
-                <!-- Infrared Filter Control -->
-                <div>
-                    <button class="Button" id="toggle-detection-button">Detection On/Off</button>
-                    <button class="Button" id="restart-button">Restart Motion</button>
-                </div>                
+                <button class="Button" id="toggle-green-button" data-action-name="Salon (Vert)">Salon (Vert)</button>
             </div>
             <div>
-                <!-- Status Indicator -->
-                <p id="statusIndicator">Detection Status Unknown</p>
-                <p id="motionEventIndicator">Motion Event: No</p>
+                <button class="Button" id="toggle-blue-button" data-action-name="Entrée (Bleu)">Entrée (Bleu)</button>
             </div>
         </div>
-        <!-- LED Control Panel -->
+        <h2>Contrôle Store</h2>
         <div>
-            <button class="Button" id="strip-switch-button">Turn On/Off</button>
-            <button class="Button" id="night-light-button">Night Light</button>
+            <button class="Button" id="toggle-servomotor-button" data-action-name="Store">Store Ouvert/Fermé</button>
+            <button class="Button" id="toggle-auto-servo-button" data-action-name="Automatisation">Automatisation</button>
+        </div> 
+        <div>
+            <iframe id="streamFrame" width="320" height="240" src="http://jaunepi.local:8089"></iframe>
+        </div>
+        <!-- <div>
+            <p id="motionEventIndicator">Événement de Mouvement : Non</p>
+        </div> -->
+        <h2>Caméra de Sécurité</h2> 
+        <div>
+            <div>
+                <button class="Button red-button" id="snapshot-button">Capture d'Écran</button>
+                <button class="Button red-button" id="toggle-recording-button" data-action-name="Enregistrer">Enregistrer</button>
+            </div>
+            <div>
+                <button class="Button" id="toggle-detection-button" data-action-name="Détection">Détection</button>
+                <button class="Button red-button" id="restart-motion-button">Redémarrer</button>
+            </div>
+            <div>
+                <button class="Button" id="toggle-infrared-button" data-action-name="Infrarouge">Infrarouge</button>
+            </div>                
+        </div>
+        
+        <div>
+            <h2>Bande LED</h2>
+            <div>
+                <button class="Button" id="toggle-strip-button" data-action-name="Bande LED">Bande LED</button>
+                <button class="Button" id="strip-random-color-button">Couleur Aléatoire</button>
+            </div>
+            <div>
+                <button class="Button" id="toggle-night-button" data-action-name="Veilleuse">Veilleuse</button>
+                <button class="Button" id="toggle-proximity-button" data-action-name="Proximité">Proximité</button>
+            </div>
+            <div>
+                <button class="Button" id="toggle-rainbow-button" data-action-name="Arc-en-ciel">Arc-en-ciel</button>
+            </div>
         </div>
     </div>
-    <script>
-    </script>
 </body>
 </html>

@@ -17,7 +17,6 @@ DEFAULT_BRIGHTNESS = 125
 DEFAULT_COLOR = Color(255, 255, 255)
 LED_INVERT = False
 
-
 # Global variables for sunrise and sunset colors
 DEFAULT_BRIGHTNESS
 
@@ -35,13 +34,20 @@ strip.begin()
 # Set up the stop event for the thread
 stop_event = threading.Event()
 
+# Global variable for rainbow thread
+rainbow_thread = None
+
+# Function for rainbow cycling
 def rainbow_cycle(strip, wait_ms=20):
+    while not stop_event.is_set():
         for j in range(255):
             for i in range(strip.numPixels()):
+                if stop_event.is_set():
+                    return
                 strip.setPixelColor(i, wheel((i + j) & 255))
             strip.show()
             time.sleep(wait_ms / 1000.0)
-            
+     
 # Function to smoothly cycle through the colors of the rainbow
 def wheel(pos):
     if pos < 85:
@@ -223,17 +229,27 @@ def daylight_mode():
 # Start the rainbow mode thread
 @app.route('/rainbow/start')
 def start_rainbow_mode():
-    rainbow_thread = threading.Thread(target=rainbow_cycle, args=(strip,))
-    rainbow_thread.start()
-    return 'Rainbow Mode Started'
+    global rainbow_thread
+    global stop_event
+
+    if rainbow_thread is None or not rainbow_thread.is_alive():
+        stop_event.clear()  # Clear the stop event flag
+        rainbow_thread = threading.Thread(target=rainbow_cycle, args=(strip,))
+        rainbow_thread.start()
+        return 'Rainbow Mode Started'
+    else:
+        return 'Rainbow Mode is already running'
 
 # Set the stop event to signal the thread to stop
 @app.route('/rainbow/stop')
 def stop_rainbow_mode():
     global stop_event
-    stop_event.set()
-    return 'Rainbow Mode Stopped'
-
+    if rainbow_thread is not None and rainbow_thread.is_alive():
+        stop_event.set()  # Set the stop event flag
+        return 'Rainbow Mode Stopping'
+    else:
+        return 'Rainbow Mode is not running'
+    
 # Sunrise Mode route using rainbow effect
 @app.route('/sunrise')
 def sunrise_mode():
@@ -289,4 +305,5 @@ if __name__ == '__main__':
     try:
         app.run(host='0.0.0.0')
     except KeyboardInterrupt:
+        stop_rainbow_mode()  # Stop the rainbow mode before exiting
         turn_off(strip)

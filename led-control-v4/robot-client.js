@@ -1,3 +1,5 @@
+// robot-client.js
+
 const io = require('socket.io-client');
 const Gpio = require('onoff').Gpio;
 const pigpio = require('pigpio');
@@ -26,59 +28,122 @@ i2c1.writeByteSync(DEVICE_ADDRESS, ENABLE, 0x03);  // Active la proximité et la
 i2c1.writeByteSync(DEVICE_ADDRESS, ATIME, 0xFF);    // Temps d'intégration maximal
 i2c1.writeByteSync(DEVICE_ADDRESS, CONTROL, 0x0D);  // Gain x1 et mode de mesure
 
+const MIN_LUMINOSITY = 0;
+const MAX_LUMINOSITY = 1000;
+const MIN_SERVO_POSITION = 750;
+const MAX_SERVO_POSITION = 2000;
 
-let isNormalMode = true;
-let isLedStripOn = false;
-let isDetectionRunning = false;
-let isMakingMovie = false;
+const MIN_BRIGHTNESS = 125;
+const MAX_BRIGHTNESS = 0;
 
-
-
-const ledStatusMap = {
-    jaune: false,
-    green: false,
-    blue: false,
-    servo: false,
+const componentStatusMap = {
+    toggleYellow: false,
+    toggleGreen: false,
+    toggleBlue: false,
+    toggleServomotor: false,
+    toggleAutoServo: false,
+    toggleInfrared: false,
+    toggleDetection: false,
+    toggleRecording: false,
+    toggleStrip: false,
+    toggleProximity: false,
+    toggleNight: false,
+    toggleRainbow: false,
 };
 
-const jauneLed = new Gpio(19, 'out');
+let intervalServoAuto = null;
+let intervalProximity = null;
+let intervalNight = null;
+
+const yellowLed = new Gpio(19, 'out');
 const greenLed = new Gpio(26, 'out');
 const blueLed = new Gpio(13, 'out');
 const servomotor = new pigpio.Gpio(23, { mode: pigpio.Gpio.OUTPUT });
-const filtreIR = new Gpio(17, 'out');
-
-
-function toggleLed(led) {
-    ledStatusMap[led] = !ledStatusMap[led];
-}
-
+const infrared = new Gpio(17, 'out');
 
 function setLedPins() {
-    jauneLed.writeSync(ledStatusMap.jaune ? 1 : 0);
-    greenLed.writeSync(ledStatusMap.green ? 1 : 0);
-    blueLed.writeSync(ledStatusMap.blue ? 1 : 0);
-    socket.emit('message-from-robot', { ledStatusMap, to: 'USER' });
+    yellowLed.writeSync(componentStatusMap.toggleYellow ? 1 : 0);
+    greenLed.writeSync(componentStatusMap.toggleGreen ? 1 : 0);
+    blueLed.writeSync(componentStatusMap.toggleBlue ? 1 : 0);
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
 }
 
-
-function rotateServomotor() {
-    servomotor.servoWrite(2000);
-    console.log("jaw");
-    setTimeout(() => {
-        servomotor.servoWrite(1500);
-        console.log("nein");
-    }, 2000);
+function toggleComponent(component) {
+    componentStatusMap[component] = !componentStatusMap[component];
 }
 
-
-function toggleIRFilter() {
-    isNormalMode = !isNormalMode;
-    filtreIR.writeSync(isNormalMode ? 0 : 1);
-    socket.emit('ir-filter-status', isNormalMode);
-    console.log(isNormalMode ? "Switched to Normal Mode" : "Switched to Night-vision Mode");
-    socket.emit('message-from-robot', { isNormalMode, to: 'USER' });
+function setServoPosition(position) {
+    servomotor.servoWrite(position);
 }
 
+function openServoCompletely() {
+    setServoPosition(MAX_SERVO_POSITION);
+    console.log("Servo opened completely");
+}
+
+function closeServoCompletely() {
+    setServoPosition(MIN_SERVO_POSITION);
+    console.log("Servo closed completely");
+}
+
+function mapServoPosition(luminosity) {
+    const mappedPosition = Math.floor(
+        ((luminosity - MIN_LUMINOSITY) / (MAX_LUMINOSITY - MIN_LUMINOSITY)) *
+        (MIN_SERVO_POSITION - MAX_SERVO_POSITION) + MAX_SERVO_POSITION
+    );
+
+    return mappedPosition;
+}
+
+function adjustServoBasedOnLight() {
+    if (!componentStatusMap.toggleAutoServo) {
+        return; // If auto mode is not enabled, do nothing
+    }
+
+    const luminosity = readLuminosity();
+    const servoPosition = mapServoPosition(luminosity);
+
+    setServoPosition(servoPosition);
+    console.log(`Servo adjusted based on light. Luminosity: ${luminosity}, Servo Position: ${servoPosition}`);
+}
+
+function toggleServomotor() {
+    toggleComponent('toggleServomotor');
+
+    if (componentStatusMap.toggleServomotor) {
+        if (!componentStatusMap.toggleAutoServo) {
+            openServoCompletely();
+            console.log('Blinds open');
+        } else {
+            // Start auto mode
+            intervalServoAuto = setInterval(adjustServoBasedOnLight, 1000);
+        }
+    } else {
+        // Close servo and stop auto mode
+        closeServoCompletely();
+        clearInterval(intervalServoAuto);
+        console.log('Blinds closed');
+    }
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+}
+
+function toggleAutoServomotor() {
+    toggleComponent('toggleAutoServo');
+
+    clearInterval(intervalServoAuto);
+
+    if (componentStatusMap.toggleAutoServo && componentStatusMap.toggleServomotor) {
+        intervalServoAuto = setInterval(adjustServoBasedOnLight, 1000);
+    }
+
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+}
+
+function toggleInfrared() {
+    toggleComponent('toggleInfrared');
+    infrared.writeSync(componentStatusMap.toggleInfrared ? 1 : 0);
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+}
 
 function takeSnapshot() {
     console.log('Fetching snapshot...');
@@ -92,117 +157,95 @@ function takeSnapshot() {
         .catch(error => console.error('Error fetching snapshot:', error));
 }
 
-
 function startMovie() {
-    if (!isMakingMovie) {
-        console.log('Starting movie...');
-        fetch('http://jaunepi.local:8088/0/action/eventstart')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch');
-                }
-            })
-            .catch(error => console.error('Error starting movie:', error));
-
-        isMakingMovie = true;
-        console.log('Movie started.');
-    } else {
-        console.log('Movie is already running.');
-    }
+    console.log('Starting movie...');
+    fetch('http://jaunepi.local:8088/0/action/eventstart')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+        })
+        .catch(error => console.error('Error starting movie:', error));
+    console.log('Movie started.');
 }
 
 function endMovie() {
-    if (isMakingMovie) {
-        console.log('Ending movie...');
-        fetch('http://jaunepi.local:8088/0/action/eventend')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch');
-                }
-            })
-            .catch(error => console.error('Error ending movie:', error));
-
-        isMakingMovie = false;
-        console.log('Movie ended.');
-    } else {
-        console.log('Movie is not running.');
-    }
+    console.log('Ending movie...');
+    fetch('http://jaunepi.local:8088/0/action/eventend')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+        })
+        .catch(error => console.error('Error ending movie:', error));
+    console.log('Movie ended.');
 }
 
-function makeMovie(){
-    if (!isMakingMovie) {
+function toggleRecording() {
+    toggleComponent('toggleRecording');
+    if (componentStatusMap.toggleRecording) {
         startMovie();
     } else {
         endMovie();
     }
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
 }
 
-// function startDetection() {
-//     console.log('Starting detection...');
-//     fetch('http://jaunepi.local:8088/0/detection/start')
-//         .then(response => {
-//             if (!response.ok) {
-//                 throw new Error('Failed to fetch');
-//             }
-//         })
-//         .catch(error => console.error('Error starting detection:', error));
-//     }
-
-
-// function pauseDetection() {
-//     console.log('Pausing detection...');
-//     fetch('http://jaunepi.local:8088/0/detection/pause')
-//         .then(response => {
-//             if (!response.ok) {
-//                 throw new Error('Failed to fetch');
-//             }
-//         })
-//         .catch(error => console.error('Error pausing detection:', error));
-// }
-
-
 function startDetection() {
-    if (!isDetectionRunning) {
-        console.log('Starting detection...');
-        fetch('http://jaunepi.local:8088/0/detection/start')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch');
-                }
-            })
-            .catch(error => console.error('Error starting detection:', error));
+    console.log('Starting detection...');
+    fetch('http://jaunepi.local:8088/0/detection/start')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+        })
+        .catch(error => console.error('Error starting detection:', error));
+    console.log('Detection started.');
 
-        isDetectionRunning = true;
-        console.log('Detection started.');
-    } else {
-        console.log('Detection is already running.');
-    }
 }
 
 function pauseDetection() {
-    if (isDetectionRunning) {
-        console.log('Pausing detection...');
-        fetch('http://jaunepi.local:8088/0/detection/pause')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Failed to fetch');
-                }
-            })
-            .catch(error => console.error('Error pausing detection:', error));
-
-        isDetectionRunning = false;
-        console.log('Detection paused.');
-    } else {
-        console.log('Detection is not running.');
-    }
+    console.log('Pausing detection...');
+    fetch('http://jaunepi.local:8088/0/detection/pause')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+        })
+        .catch(error => console.error('Error pausing detection:', error));
+    console.log('Detection paused.');
 }
 
-function toggleDetection(){
-    if (isDetectionRunning) {
-        pauseDetection();
-    } else {
+function toggleDetection() {
+    updateDetectionStatus()
+    toggleComponent('toggleDetection');
+    if (componentStatusMap.toggleDetection) {
         startDetection();
+    } else {
+        pauseDetection();
     }
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+}
+
+function updateDetectionStatus() {
+    console.log('Fetching detection status...');
+    fetch('http://jaunepi.local:8088/0/detection/status')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+            return response.text();
+        })
+        .then(data => {
+            console.log(data);
+            const isActive = data.includes('status ACTIVE');
+            if (isActive) {
+                componentStatusMap.toggleDetection = true;
+            } else {
+                componentStatusMap.toggleDetection = false;
+            }
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 function restartMotion() {
@@ -216,27 +259,69 @@ function restartMotion() {
         .catch(error => console.error('Error restarting motion:', error));
 }
 
-
-function getDetectionStatus() {
-    console.log('Fetching detection status...');
-    fetch('http://jaunepi.local:8088/0/detection/status')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch');
-            }
-            return response.text();
-        })
-        .then(data => {
-            console.log(data);
-            socket.emit('message-from-robot', { detectionStatus: data.trim(), to: 'USER' });
-        })
-        .catch(error => console.error('Error:', error));
-}
-
-
 function readLuminosity() {
     const luminosityData = i2c1.readWordSync(DEVICE_ADDRESS, CDATAL);
     return luminosityData;
+}
+
+function readProximity() {
+    const proximityData = i2c1.readWordSync(DEVICE_ADDRESS, PDATAL);
+    return proximityData;
+}
+
+function setBrightness(brightness) {
+    console.log('Set brightness...');
+    fetch(`http://jaunepi.local:5000/set_brightness/${brightness}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch brightness');
+            } else {
+                componentStatusMap.toggleStrip = true;
+                socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+            }
+        })
+        .catch(error => console.error('Error turning off lights:', error));
+}
+
+function mapBrightness(luminosity) {
+    const mappedPosition = Math.floor(
+        ((luminosity - MIN_LUMINOSITY) / ( MAX_LUMINOSITY - MIN_LUMINOSITY)) *
+        (MAX_BRIGHTNESS - MIN_BRIGHTNESS) +
+        MIN_BRIGHTNESS
+    );
+
+    return mappedPosition;
+}
+
+function adjustLightBasedOnLuminosity() {
+    const luminosity = readLuminosity();
+    const brightness = mapBrightness(luminosity);
+    setBrightness(brightness);
+    console.log(`Light adjusted based on proximity. Proximity: ${proximity}, Brightness: ${brightness}`);
+}
+
+function adjustLightBasedOnProximity() {
+    if (readProximity() < 3) {
+        if (!componentStatusMap.toggleStrip) {
+            toggleStrip();
+        }
+    } else {
+        if (componentStatusMap.toggleStrip){
+            toggleStrip();
+        }
+    }
+}
+
+function toggleProximity() {
+    toggleComponent('toggleProximity');
+    if (componentStatusMap.toggleProximity) {
+        clearInterval(intervalProximity);
+
+        intervalProximity = setInterval(adjustLightBasedOnProximity, 1000);
+    } else {
+        clearInterval(intervalProximity);
+    }
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
 }
 
 function turnOnLights() {
@@ -248,7 +333,7 @@ function turnOnLights() {
                 throw new Error('Failed to fetch /on');
             }
             // Chain the second fetch request
-            return fetch('http://jaunepi.local:5000/random_color');
+            return fetch('http://jaunepi.local:5000/daylight');
         })
         .then(response => {
             if (!response.ok) {
@@ -258,8 +343,6 @@ function turnOnLights() {
         })
         .catch(error => console.error('Error turning on lights:', error));
 }
-
-
 
 function turnOffLights() {
     console.log('Turning off lights...');
@@ -272,101 +355,160 @@ function turnOffLights() {
         .catch(error => console.error('Error turning off lights:', error));
 }
 
-function toggledLedStrip() {
-    isLedStripOn = !isLedStripOn;
-    if (isLedStripOn) {
+function stripRandomColor() {
+    console.log('Random light color...');
+    fetch('http://jaunepi.local:5000/random_color')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            } else {
+                componentStatusMap.toggleStrip = true;
+                socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+            }
+        })
+        .catch(error => console.error('Error turning off lights:', error));
+}
+
+function toggleStrip() {
+    toggleComponent('toggleStrip');
+    if (componentStatusMap.toggleStrip) {
         turnOnLights();
         console.log('LED Strip turned on');
     } else {
         turnOffLights();
         console.log('LED Strip turned off');
     }
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
 }
 
-
-function controlLedStrip() {
-    if (readLuminosity()< 12) {
-        turnOnLights() 
-        console.log('LED Strip turned on');
+function adjustLightBasedOnLuminosity() {
+    if (readLuminosity() < 12) {
+        if (!componentStatusMap.toggleStrip) {
+            toggleStrip();
+        }
     } else {
-        turnOffLights() 
-        console.log('LED Strip turned off');
+        if (componentStatusMap.toggleStrip){
+            toggleStrip();
+        }
     }
 }
+
+function toggleNight() {
+    toggleComponent('toggleNight');
+    if (componentStatusMap.toggleNight) {
+        clearInterval(intervalNight);
+
+        intervalNight = setInterval(adjustLightBasedOnLuminosity, 1000);
+    } else {
+        clearInterval(intervalNight);
+    }
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+}
+
+function startRainbow() {
+    console.log('Rainbow!!!');
+    fetch('http://jaunepi.local:5000/rainbow/start')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+        })
+        .catch(error => console.error('Error starting rainbow', error));
+}
+
+function stopRainbow() {
+    console.log('No more rainbow...');
+    fetch('http://jaunepi.local:5000/rainbow/stop')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch');
+            }
+        })
+        .catch(error => console.error('Error stopping rainbow:', error));
+}
+
+function toggleRainbow() {
+    toggleComponent('toggleRainbow');
+    if (componentStatusMap.toggleRainbow) {
+        startRainbow();
+        console.log('Rainbow!');
+    } else {
+        stopRainbow();
+        console.log(" :'( ");
+    }
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+}
+
 
 socket.on('message-from-client', message => {
-    switch (message.led) {
-        case 'jaune':
-        case 'green':
-        case 'blue':
-            toggleLed(message.led);
-            break;
-        case 'servo':
-            rotateServomotor();
-            break;
-    }
-
     switch (message.type) {
-        case 'rotate-servomotor':
-            rotateServomotor();
+        case 'toggle-yellow':
+            toggleComponent('toggleYellow');           
             break;
-        case 'toggle-ir-filter':
-            toggleIRFilter();
+        case 'toggle-green':
+            toggleComponent('toggleGreen');
             break;
-        case 'take-snapshot':
+        case 'toggle-blue':
+            toggleComponent('toggleBlue');
+            break;
+        case 'toggle-auto-servo':
+            toggleAutoServomotor();
+            break;
+        case 'toggle-servomotor':
+            toggleServomotor();
+            break;
+        case 'toggle-infrared':
+            toggleInfrared();
+            break;
+        case 'snapshot':
             takeSnapshot();
             break;
-        case 'make-movie':
-            makeMovie();
+        case 'toggle-recording':
+            toggleRecording();
             break;
         case 'restart-motion':
             restartMotion();
             break;
-        case 'start-detection':
-            startDetection();
-            break;
-        case 'pause-detection':
-            pauseDetection();
-            break;
         case 'toggle-detection': 
             toggleDetection();
             break;  
-        case 'update-status':
-            updateStatus();
+        case 'toggle-strip':
+            toggleStrip();
             break;
-        case 'get-detection-status':
-            getDetectionStatus();
+        case 'strip-random-color':
+            stripRandomColor();
             break;
-        case 'strip-switch':
-            toggledLedStrip();
+        case 'toggle-night':
+            toggleNight();
             break;
-        case 'strip-on':
-            turnOnLights();
+        case 'toggle-rainbow':
+            toggleRainbow();
             break;
-        case 'strip-off':
-            turnOffLights();
+        case 'toggle-proximity':
+            toggleProximity();
             break;
-        case 'night-light':
-            controlLedStrip();
-            break;
-        
     }
     setLedPins();
 });
 
-socket.on('motion-detected', () => {
-    socket.emit('motion-detected', {});
-    // console.log('Motion detected event emitted to clients');
+// socket.on('motion-detected', () => {
+//     socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+// });
+
+socket.on('event-start', () => {
+    componentStatusMap.toggleRecording = true;
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
 });
 
-setInterval(() => {
-    getDetectionStatus();
-}, 1000);
-
+socket.on('event-end', () => {
+    componentStatusMap.toggleRecording = false;
+    socket.emit('message-from-robot', { componentStatusMap, to: 'USER' });
+});
 
 socket.on('connect', () => {
-    // Ensure the initial state is sent to the frontend on connection
-    socket.emit('ir-filter-status', isNormalMode);
-    socket.emit('message-from-robot', { ledStatusMap, to: 'USER' });
+    updateDetectionStatus();
     socket.emit('init-robot', { id: 'ROBOT' });
 });
+
+// Set up the interval to call the function every 2 seconds (2000 milliseconds)
+setInterval(updateDetectionStatus, 2000);
