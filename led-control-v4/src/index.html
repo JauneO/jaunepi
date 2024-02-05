@@ -30,19 +30,19 @@
         }
 
         h1 {
-            margin: 0; /* Remove default margin for h1 */
+            margin: 0;
         }
 
         .Container {
             display: flex;
             flex-direction: row;
             align-items: center;
-            justify-content: center; /* Center items horizontally */
+            justify-content: center;
         }
 
         .Button {
-            display: inline-block; /* Add this line to make buttons inline */
-            width: 150px; /* Adjust the width as needed */
+            display: inline-block;
+            width: 150px;
             height: 40px;
             margin: 5px;
             background-color: #ddd;
@@ -55,8 +55,8 @@
             transition: background-color 0.3s, box-shadow 0.3s;
         }
         .Button:hover {
-            background-color: #ddd; /* Lighten the background on hover */
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Add a subtle box-shadow on hover for emboss effect */
+            background-color: #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         
         .Button:active {
@@ -69,7 +69,6 @@
             color: #fff;
         }
         
-        /* Add a transition for color change on the 'On' state */
         .Button.On:hover {
             background-color: #5cb85c;
         }
@@ -85,12 +84,12 @@
         }
 
         .red-button.Button.On {
-            background-color: rgb(146, 56, 56); /* Adjusted to a red color similar to LEDs */
+            background-color: rgb(146, 56, 56); 
             color: #fff;
         }
 
         .red-button.Button.On:hover {
-            background-color: rgb(167, 57, 57);/* Adjusted hover color for the On state */
+            background-color: rgb(167, 57, 57);
         }
         
     </style>
