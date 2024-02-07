@@ -60,7 +60,7 @@
 
 ## Start/Reset Servers
 
-- Execute the start_servers.sh script:
+- Execute the start_servers.sh script located in Documents :
   ```bash
   ./start_servers.sh
   ```
